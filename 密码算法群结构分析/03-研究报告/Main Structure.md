@@ -96,6 +96,6 @@ Main Body
 
 	2)  Weak ECC curves (anomalous)
 
-		A) Anomalous curves ($|E(\mathbb{F}_p)| = p$) allow ECDLP to be solved in $O(\log p)$ time via Smart's $p$-adic lift ([doi:10.1007/BFb0052251](https://doi.org/10.1007/BFb0052251)). Demonstrates that ECC security depends on correct curve parameter selection.
+		A) Anomalous curves ($|E(\mathbb{F}_p)| = p$) allow ECDLP to be solved in $O(\log p)$ time via Smart's $p$-adic lift ([doi:10.1007/s001459900052](https://doi.org/10.1007/s001459900052)). Demonstrates that ECC security depends on correct curve parameter selection.
 
 Conclusion: Summarise the contents covered so far and provide a glimpse of future cryptography. (~150 words)
