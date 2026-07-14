@@ -6,65 +6,105 @@ tags: [cryptography, group-theory, complexity, paper-draft]
 
 # Chapter 4 — Time Complexity and Security Complexity
 
-> Building on the formulas and group structures established in Chapter 3, this chapter decomposes each algorithm into its core computational steps, derives time complexity, and analyzes security complexity.
+> Building on the group structures established in Chapter 3, this chapter breaks down each algorithm into its core computational steps, derives time complexity, and analyzes security complexity.
 
 ---
 
 ## 4.1 Time Complexity Analysis
 
-Classical encryption algorithms fall into three types based on their core group operations<sup>[1][2]</sup>.
+### 4.1.1 RSA
 
-### 4.1.1 Modular Exponentiation: $O(\log^3 p)$
+As described in Chapter 3, RSA operates in the multiplicative group $(\mathbb{Z}/n\mathbb{Z})^\times$. The decryption exponent $d$ is on the order of $n$ ($d \approx 2^{2048}$ for $2048$-bit RSA); computing $m^d$ directly would require $d-1$ multiplications, which is infeasible. The public exponent $e$ in standard implementations is a small fixed value (typically $e = 65537 = 2^{16}+1$), making encryption much faster — the following analysis addresses the worst-case (decryption).
 
-RSA encryption $c = m^e \bmod n$<sup>[16]</sup>, DH key exchange $g^a \bmod p$<sup>[15]</sup>, and DSA signing and verification<sup>[10]</sup> all rely on modular exponentiation $g^a \bmod p$. Naively computing this requires $a$ multiplications — $a$ is on the same order as the modulus, e.g., $a \approx 2^{2048}$ for $2048$-bit keys — which is infeasible.
-
-The square-and-multiply algorithm expands the exponent $a$ in binary, producing $\log a$ bits. Each bit requires one squaring, and when the bit is $1$, one additional multiplication. Hence the total number of modular multiplications is $O(\log a)$. For a $2048$-bit exponent, this is roughly $2048$ squarings and $1024$ multiplications. Each operation multiplies two $\log n$-bit integers, costing $O((\log n)^2)$ bit operations. Total complexity:
+The square-and-multiply algorithm exploits the binary representation of $d$: $d = \sum_{i=0}^{k-1} b_i 2^i$ with $b_i \in \{0,1\}$ and $k = \log_2 d$. Then:
 
 $$
-T_{\text{mod-exp}} = O(\log a) \times O((\log n)^2) = O((\log n)^3)
+m^d = m^{\sum b_i 2^i} = \prod_{i=0}^{k-1} (m^{2^i})^{b_i}
 $$
 
-RSA requires one exponentiation to encrypt and one to decrypt; DH one per party; ElGamal two to encrypt and one to decrypt; DSA one to sign and two to verify.
+The value $m^{2^i}$ is obtained by repeated squaring. The algorithm scans from the most significant bit: at each step it squares the accumulator, and if the current bit is $1$, it additionally multiplies by $m$. Scanning $k$ bits requires $k$ squarings and $\frac{k}{2}$ conditional multiplications on average — approximately $\frac{3}{2}k$ modular multiplications. With $k = \log_2 d \approx \log_2 n$, the operation count is $O(\log n)$.
 
-### 4.1.2 Scalar Multiplication: $O(\log^3 q)$
+Each modular multiplication multiplies two $\log n$-bit integers and reduces modulo $n$, costing $O((\log n)^2)$. Hence:
 
-ECC's core operation is $Q = kP$ over $P \in E(\mathbb{F}_q)$<sup>[17][18]</sup>, adding point $P$ to itself $k$ times in the elliptic curve group. Direct computation requires $k$ point additions — $k \approx 2^{256}$, infeasible.
+$$
+T_{\text{RSA}} = O(\log n) \times O((\log n)^2) = O((\log n)^3)
+$$
 
-The double-and-add algorithm expands $k$ in binary, producing $\log k$ bits. Each bit triggers one point doubling (adding a point to itself), and when the bit is $1$, one additional general point addition. The total is $O(\log k) = O(\log q)$ point operations. Each point operation requires several $\mathbb{F}_q$ field multiplications (cost $O((\log q)^2)$ — multiplying two $\log q$-bit numbers) plus one field inversion (also $O((\log q)^2)$). Total complexity:
+Encryption and decryption both have modular exponentiation as the core operation, with the same asymptotic complexity $O((\log n)^3)$; encryption with small $e$ runs far faster in practice.
+
+### 4.1.2 DH
+
+As described in Chapter 3, DH operates in the prime-order subgroup $\langle g \rangle$ of $(\mathbb{Z}/p\mathbb{Z})^\times$. Each party computes $g^a \bmod p$<sup>[14]</sup> via square-and-multiply with $O(\log p)$ operations. Modular multiplication cost depends on bit length ($O(b^2)$ for $b$-bit operands), not on whether the modulus is prime.
+
+$$
+T_{\text{DH}} = O(\log p) \times O((\log p)^2) = O((\log p)^3)
+$$
+
+### 4.1.3 ElGamal
+
+ElGamal shares the same group structure as DH (Chapter 3). Encryption requires two modular exponentiations ($g^y$, $h^y$) and one modular multiplication ($m \cdot h^y$); decryption requires one exponentiation ($c_1^{-x}$) and one modular inverse. Total workload is $2$ to $3$ exponentiations.
+
+$$
+T_{\text{ElGamal}} = O((\log p)^3)
+$$
+
+### 4.1.4 DSA
+
+DSA uses the same group as DH (Chapter 3): $\langle g \rangle \subset (\mathbb{Z}/p\mathbb{Z})^\times$ of order $q$, with $p \approx 2048$ bits and $q \approx 256$ bits<sup>[10]</sup>. Signing computes $g^k \bmod p$ (one exponentiation); verification computes $g^{u_1} y^{u_2} \bmod p$ (two exponentiations). The exponents $k, u_1, u_2$ are in $\mathbb{F}_q$ ($256$ bits), so the iteration count is $O(\log q)$; each modular multiplication costs $O((\log p)^2)$. The overall complexity is $O(\log q \cdot (\log p)^2)$, which is $O((\log p)^3)$ in the asymptotic sense since $\log q = O(\log p)$.
+
+$$
+T_{\text{DSA}} = O(\log q \cdot (\log p)^2)
+$$
+
+### 4.1.5 ECC
+
+As described in Chapter 3, the elliptic curve point group $E(\mathbb{F}_q)$ is a finite Abelian group under the chord-and-tangent addition law. Scalar multiplication $Q = kP$ is the core operation<sup>[16][17]</sup>. $k \approx 2^{256}$; direct iteration is infeasible.
+
+The double-and-add algorithm expands $k$ in binary: $kP = \sum b_i (2^i P)$. Scanning from the most significant bit, it doubles the accumulator at each step and conditionally adds $P$. This requires $\frac{3}{2}\log_2 k$ point operations, $O(\log q)$.
+
+Under affine Weierstrass coordinates<sup>[4]</sup>, a point addition costs $2$ $\mathbb{F}_q$ field multiplications and $1$ field inversion; a doubling costs $3$ field multiplications and $1$ field inversion. $\mathbb{F}_q$ multiplication costs $O((\log q)^2)$; inversion costs $O((\log q)^2)$. Each point operation costs $O((\log q)^2)$.
 
 $$
 T_{\text{ECC}} = O(\log q) \times O((\log q)^2) = O((\log q)^3)
 $$
 
-A $256$-bit ECC key provides $128$-bit equivalent security, matching a $3072$-bit RSA key. Since $\log q = 256$ is much smaller than $\log n = 3072$, ECC runs $5\text{--}10\times$ faster in practice<sup>[5]</sup>.
+ECC's $\log q$ is far smaller than RSA's $\log n$ — $256$-bit ECC provides $128$-bit equivalent security where RSA requires $3072$ bits. At equivalent security levels, ECC runs roughly $5$ to $10$ times faster<sup>[5]</sup>.
 
-### 4.1.3 Linear Operations: $O(n)$
+### 4.1.6 AES
 
-AES processes $128$-bit blocks through $10\text{--}14$ SPN rounds. Each round comprises SubBytes ($\mathrm{GF}(2^8)$ table lookup), ShiftRows (rotation), MixColumns ($\mathrm{GF}(2^8)$ matrix multiplication), and AddRoundKey (XOR)<sup>[13]</sup>. All operations have fixed cost per block — $16$ byte lookups, one rotation, one matrix multiplication, and one XOR — independent of key size, with no iteration or exponentiation. Hence $O(1)$ per block and $O(n)$ total for an $n$-byte message. DES uses a $16$-round Feistel network with the same $O(n)$ complexity; its $2^{56}$ key permutations have been proven not to form a group under composition<sup>[19][20]</sup>. MD5 and SHA-256 use Merkle–Damgård iterative compression<sup>[1][7]</sup>: messages are split into $512$-bit blocks, each processed by a compression function executing $64$ steps (MD5) or $64$ rounds (SHA-256) of bitwise operations and modular $2^{32}$ addition — all fixed-count, yielding $O(1)$ per block and $O(n)$ total.
+AES uses the additive and multiplicative groups of $\mathrm{GF}(2^8)$ (Chapter 3), processing $128$-bit blocks through $10$ to $14$ SPN rounds ($10$ for $128$-bit keys, $12$ for $192$-bit, $14$ for $256$-bit)<sup>[13]</sup>. Each round: SubBytes ($\mathrm{GF}(2^8)$ S-box lookup, $16$ lookups), ShiftRows, MixColumns, AddRoundKey (XOR, $16$ operations). All operation counts are fixed by round count, which is fixed by key size. $O(1)$ per block, $O(n)$ overall.
+
+### 4.1.7 DES
+
+DES is a $16$-round Feistel network (the non-group property is discussed in Chapter 3)<sup>[1]</sup>. $F$ comprises expansion permutation, subkey XOR, $8$ S-boxes, and P-permutation — all bit manipulations with fixed counts. $O(1)$ per block, $O(n)$ overall.
+
+### 4.1.8 MD5 / SHA-1 / SHA-256
+
+All three use the Merkle–Damgård construction (Chapter 3), with no group structure<sup>[1][7]</sup>. All have fixed step counts. $O(1)$ per block, $O(n)$ overall.
 
 ---
 
 ```candidate
 ## 4.2 Security Complexity Analysis (candidate)
 
-Security complexity measures the optimal cost of attacking an algorithm. Different group structures lead to different security profiles.
+RSA reduces to integer factorization. The best classical attack, GNFS, runs in sub-exponential time $L_n[1/3, (64/9)^{1/3}] \approx \exp(1.923 (\ln n)^{1/3} (\ln \ln n)^{2/3})$<sup>[8]</sup>. RSA-2048 provides approximately $112$-bit equivalent security; NIST requires $3072$-bit for the $128$-bit baseline<sup>[6]</sup>. DH, ElGamal, and DSA reduce to DLP on $(\mathbb{Z}/p\mathbb{Z})^\times$<sup>[14]</sup>, with GNFS-based attack complexity $L_p[1/3, 1.923]$<sup>[9]</sup>.
 
-RSA reduces to integer factorization on $(\mathbb{Z}/n\mathbb{Z})^\times$; DH/DSA reduce to DLP on $(\mathbb{Z}/p\mathbb{Z})^\times$<sup>[15][16]</sup>. The best attack, GNFS<sup>[8][9]</sup>, runs in sub-exponential time $L_n[1/3, 1.923]$. RSA-2048 provides only $112$-bit equivalent security; NIST requires $3072$-bit to reach the $128$-bit baseline<sup>[6]</sup>.
+ECC reduces to ECDLP on $E(\mathbb{F}_q)$<sup>[16][17]</sup>. No sub-exponential attack exists for general curves; Pollard's $\rho$ runs in $O(\sqrt{q})$ — exponential time<sup>[12]</sup>. A $256$-bit curve provides $128$-bit security. Supersingular curves are vulnerable to the MOV attack<sup>[23]</sup>; anomalous curves are solvable in polynomial time<sup>[3]</sup>. Standard curves avoid both.
 
-ECC reduces to ECDLP on $E(\mathbb{F}_q)$<sup>[17][18]</sup>. For general curves, no sub-exponential attack exists; the best attack, Pollard's $\rho$<sup>[12]</sup>, runs in exponential time $O(\sqrt{q})$ — the fundamental reason ECC outperforms RSA/DH in key efficiency. Supersingular curves are vulnerable to the MOV attack<sup>[24]</sup>; anomalous curves can be solved in polynomial time<sup>[3]</sup>. Standard curves avoid both.
-
-AES derives its security from SPN confusion and diffusion<sup>[21]</sup>, with brute-force cost $O(2^k)$. The Biclique attack<sup>[11]</sup> only reduces this to $2^{126.1}$, a negligible improvement. DES's $56$-bit key was brute-forced in $56$ hours by the EFF Deep Crack<sup>[23]</sup>; its non-group property<sup>[19][20]</sup> ensures multi-layer encryption adds real security. MD5 was broken by Wang et al. with a $2^{39}$ collision attack<sup>[22]</sup>; SHA-256 maintains $2^{128}$ collision resistance and remains secure<sup>[1][7]</sup>.
+AES derives security from SPN confusion and diffusion<sup>[20]</sup>, brute-force $O(2^k)$. Biclique reduces this to $2^{126.1}$<sup>[11]</sup>. DES's $56$-bit key was brute-forced by EFF Deep Crack<sup>[22]</sup>. MD5 collision: $2^{39}$<sup>[21]</sup>; SHA-1: $2^{63}$; SHA-256: $2^{128}$ (secure)<sup>[1][7]</sup>.
 ```
 
 ---
 
 ## 4.3 Chapter Summary
 
-1. **Three complexity categories**: Modular exponentiation ($(\mathbb{Z}/n\mathbb{Z})^\times$ type groups, $O(\log^3 p)$), scalar multiplication ($E(\mathbb{F}_q)$ point groups, $O(\log^3 q)$), and linear operations ($\mathrm{GF}(2^8)$ field ops / iterative structures, $O(n)$).
+1. RSA, DH, ElGamal, DSA, and ECC all have core operation complexity $O(\log^3\cdot)$. ECC's $\log q$ is far smaller than RSA/DH's $\log n$, yielding $5$ to $10\times$ speed at equivalent security. ElGamal requires $2$ to $3$ times more exponentiations.
+
+2. AES, DES, and MD5/SHA-1/SHA-256 have constant per-block time, $O(n)$ overall. DES, MD5, and SHA-1 have been practically broken.
 
 ```candidate
-2. **Security complexity gap**: Algorithms on finite field multiplicative groups face sub-exponential GNFS attacks; ECC on elliptic curve point groups provides exponential-grade security; symmetric ciphers without group hard problems (AES) show a $1:1$ ratio between key size and security.
-3. **Dual role of group structures**: In public-key crypto, group hard problems are the direct source of security. In symmetric ciphers and hashing, group structures only serve the computation layer — security comes from diffusion and confusion.
+3. RSA/DH/DSA face sub-exponential GNFS attacks; ECC enjoys exponential-grade security.
+4. In public-key crypto, group hard problems are the direct source of security. In symmetric ciphers and hashing, group structures only serve the computation layer.
 ```
 
 ---
