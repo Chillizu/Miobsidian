@@ -80,22 +80,22 @@ Main Body
 
 	a)  Hash Collision in Weak MD4 and SHA-1
 
-		1)  MD4 collision
+	1) MD4 collision
 
-			MD4 collision via Wang et al. (2005) differential attack at ~2^39 complexity. (Wang et al. 2005, Eurocrypt)
+		A) MD4 collision via Wang et al. (2005) differential attack at ~2^39 complexity. (Wang et al. 2005, Eurocrypt — [iacr.org](https://iacr.org/archive/eurocrypt2005/34940001/34940001.pdf))
 
-		2)  SHA-1 collision
+	2) SHA-1 collision
 
-			First practical SHA-1 collision at ~2^63 complexity (~110 GPU-years), two different PDFs with identical hash. (SHAttered 2017, Google & CWI)
+		A) First practical SHA-1 collision at ~2^63 complexity (~110 GPU-years), two different PDFs with identical hash. (SHAttered 2017, Google & CWI — [shattered.io](https://shattered.io/static/shattered.pdf))
 
 	b)  Use Inappropriate Parameters to Test Asymmetric Ciphers
 
-		1)  Small primes (DLP)
+	1) Small primes (DLP)
 
-			DLP on a 32-bit prime group solved in seconds via baby-step giant-step or Pohlig–Hellman decomposition. Demonstrates that DLP difficulty depends on the size and structure of the group.
+		A) DLP on a 32-bit prime group solved in seconds via baby-step giant-step or Pohlig–Hellman decomposition. Demonstrates that DLP difficulty depends on the size and structure of the group. (See HAC Ch.3 — [cacr.uwaterloo.ca](https://cacr.uwaterloo.ca/hac/about/chap3.pdf))
 
-		2)  Weak ECC curves (anomalous)
+	2)  Weak ECC curves (anomalous)
 
-			Anomalous curves ($|E(\mathbb{F}_p)| = p$) allow ECDLP to be solved in $O(\log p)$ time via Smart's $p$-adic lift. Demonstrates that ECC security depends on correct curve parameter selection.
+		A) Anomalous curves ($|E(\mathbb{F}_p)| = p$) allow ECDLP to be solved in $O(\log p)$ time via Smart's $p$-adic lift ([doi:10.1007/BFb0052251](https://doi.org/10.1007/BFb0052251)). Demonstrates that ECC security depends on correct curve parameter selection.
 
 Conclusion: Summarise the contents covered so far and provide a glimpse of future cryptography. (~150 words)
