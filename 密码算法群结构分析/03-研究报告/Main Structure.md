@@ -60,26 +60,26 @@ Main Body
 
 	d)  More Cryptographic Practices
 
-1)  Padding
+	1)  Padding
 
-2)  KDF
+	2)  KDF
 
 2)  Section 2: Properties and Applications of the Introduced Algorithms (~600 words)
 
-a)  Properties
+	a)  Properties
 
-b)  Applications
+	b)  Applications
 
-See [https://postquantum.com/post-quantum/shor-rsa-ecc-diffie-hellman/#ecc-the-invisible-backbone-of-modern-infrastructure](https://postquantum.com/post-quantum/shor-rsa-ecc-diffie-hellman/) for applications.
+		See [https://postquantum.com/post-quantum/shor-rsa-ecc-diffie-hellman/#ecc-the-invisible-backbone-of-modern-infrastructure](https://postquantum.com/post-quantum/shor-rsa-ecc-diffie-hellman/) for applications.
 
-c)  Cryptanalysis
+	c)  Cryptanalysis
 
-See GTIC, AOGTICA
+		See GTIC, AOGTICA
 
 3)  Section 3: Testing of Algorithms (~600 words)
 
-a)  Hash Collision in Weak MD4 and SHA-1
+	a)  Hash Collision in Weak MD4 and SHA-1
 
-b)  Use Inappropriate Parameters to Test Asymmetric Ciphers
+	b)  Use Inappropriate Parameters to Test Asymmetric Ciphers
 
 Conclusion: Summarise the contents covered so far and provide a glimpse of future cryptography. (~150 words)
