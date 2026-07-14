@@ -5,127 +5,134 @@ date: 2026-07-15
 
 # Section 2: Properties and Applications — 写作指导
 
-> 目标：~600 words。紧凑的三段——复杂度对比表、安全分析表、应用场景表。
+> 目标：~600 words。编号对应 docx：2) a) Properties → b) Applications → c) Cryptanalysis。
 > 不做逐步推导——仅给结论和关键推理线索。
->
-> 核心参考文献：[[密码算法群结构分析/03-研究报告/GTIC-注释翻译]] p9-11（密码分析）、[[密码算法群结构分析/03-研究报告/AOGTICA-注释翻译]] p5-6（安全属性）、`postquantum.com`（应用场景）
 
 ---
 
 ## 本节逻辑
 
 ```
-复杂度对比表 → 为什么 RSA 慢而 ECC 快？
-    ↓
-安全分析表 → GNFS vs Pollard-ρ → Shor（量子威胁）
-    ↓
-应用场景表 → 各算法用在哪？
-    ↓
-阿贝尔群统一脆弱性 → 非阿贝尔群密码动机（回指 §1.1.2）
+2) Section 2: Properties and Applications
+│
+├─ a) Properties（算法属性对比）
+│   ├── 复杂度对比表
+│   └── 安全等级对比表
+│
+├─ b) Applications（应用场景）
+│   └── 各算法实际用途表 + postquantum.com 引用
+│
+└─ c) Cryptanalysis（密码分析）
+    ├── 阿贝尔群统一脆弱性（回指 §1 a)2) 非阿贝尔群动机）
+    └── 量子威胁：Shor vs Grover
 ```
 
-**注意**：本节不展开 GNFS $L_n[1/3, 1.923]$ 的公式——只说"亚指数时间"并引用标准文献。Pollard-$\rho$ 同样只说"指数时间 $O(\sqrt{q})$"。
-
 ---
 
-## 2.1 时间复杂度对比（~200 words）
+## a) Properties（~200 words）
 
-**要传达的核心信息**：不同算法的"快慢"取决于其核心运算的渐近复杂度。ECC 用更短的密钥达到等价安全——这是它的核心优势。
+**要传达的核心信息**：不同算法的"快慢"和"安全等级"取决于其群运算的渐近复杂度和密钥长度。
 
 **讲解顺序**：
 
-1. 给出表格，然后对表格做简短文字解释。
+1. **时间复杂度对比表**
 
-| 算法      | 核心运算               |           渐近复杂度            | 直觉解释                                       |
-| :------ | :----------------- | :------------------------: | :----------------------------------------- |
-| RSA     | 平方-乘法模幂            |       $O(\log^3 n)$        | 指数 $d$ 的位数（~2048）× 每次模乘的平方代价               |
-| ElGamal | 2–3 次模幂            |       $O(\log^3 p)$        | 约为 RSA 的 2× 计算量                            |
-| DSA     | 模幂（256-bit 短指数）    | $O(\log q \cdot \log^2 p)$ | $q$ 仅 256-bit → 仅为 RSA 的 1/8               |
-| ECC     | 倍点-加法标量乘           |       $O(\log^3 q)$        | $\log q = 256 \ll \log n = 3072$ → 快 5–10× |
-| AES     | SPN 固定轮            |           $O(n)$           | 轮数由密钥长确定（10/12/14 轮），正比于消息长度               |
-| MD5/SHA | Merkle–Damgård 固定步 |           $O(n)$           | 步数固定（MD5: 64, SHA-1: 80, SHA-256: 64）      |
+| 算法 | 核心运算 | 渐近复杂度 | 直觉解释 |
+|:---|:---|:---:|:---|
+| RSA | 平方-乘法模幂 | $O(\log^3 n)$ | $n$ 为 2048-bit |
+| ElGamal | 2–3 次模幂 | $O(\log^3 p)$ | 约为 RSA 的 2× |
+| DSA | 模幂（短指数） | $O(\log q \cdot \log^2 p)$ | $q$ 仅 256-bit → 更快 |
+| ECC | 点乘标量乘 | $O(\log^3 q)$ | $\log q = 256 \ll \log n = 3072$ |
+| AES | SPN 固定轮 | $O(n)$ | 10/12/14 轮，线性于消息长度 |
+| MD5/SHA | Merkle–Damgård | $O(n)$ | 步数固定，线性于消息长度 |
 
-2. 关键解释点：
-   - RSA 和 ECC 的复杂度都是 $\log$ 的多项式（多项式时间），但**系数的差别很关键**：ECC 的 $\log q$ 是 256，RSA 的 $\log n$ 是 3072——差一个数量级。
-   - AES 和哈希函数是线性时间 $O(n)$——它们比非对称密码快几个数量级。这就是为什么"握手时用非对称交换密钥，然后用对称加密通信"。
+2. **关键解释**：
+   - RSA 和 ECC 都是 $\log$ 的多项式，但系数差一个数量级（256 vs 3072）
+   - 对称密码（AES）和非对称密码（RSA）差多个数量级 → "握手用非对称，通信用对称"
+   - 不展开 GNFS $L_n[1/3, 1.923]$ 的公式——只说"亚指数时间"并引用 GNFS 标准文献
 
-**这段写完后读者应该理解**：非对称密码比对称密码慢得多（原因：群运算 vs 位运算），但非对称密码中 ECC 比 RSA 快（原因：密钥更短）。
+3. **等效安全对比**（跨算法比较）
 
-**过渡到 2.2**："快慢只是算法的一个维度。更重要的是安全性——这些算法到底有多安全？"
+| 算法 | 密钥长 | 等效对称安全 |
+|:---|:---:|:---:|
+| RSA-2048 | 2048-bit | ~112 bits |
+| RSA-3072 | 3072-bit | 128 bits |
+| ECC-256 | 256-bit | 128 bits |
+| ECC-384 | 384-bit | 256 bits |
+| AES-128 | 128-bit | 128 bits |
+| AES-256 | 256-bit | 256 bits |
 
----
+**解释**：ECC 用 256-bit 达到 RSA 3072-bit 的安全等级——这是它成为主流的原因。
 
-## 2.2 安全分析与密码攻击（~200 words）
-
-**要传达的核心信息**：不同算法的安全等级不同。阿贝尔群上的 RSA/DH/ECC 在量子计算机面前一律脆弱。
-
-**讲解顺序**：
-
-1. 给出表格，然后解释攻击方式和量子威胁。
-
-| 算法 | 安全归约 | 最优攻击 | 等效安全 | 量子威胁 |
-|:---|:---|:---|:---:|:---:|
-| RSA-2048 | 大整数分解 | GNFS（亚指数） | ~112 bits | Shor 彻底攻破 |
-| DH/DSA-2048 | DLP | GNFS-DLP（亚指数） | ~112 bits | Shor 彻底攻破 |
-| ECC-256 | ECDLP | Pollard-$\rho$（指数） | 128 bits | Shor 彻底攻破 |
-| AES-256 | — | Biclique / 穷举 | 256 bits | Grover 降至 128 bits |
-| MD5 | — | 碰撞攻击 | $2^{39}$（已破） | — |
-| SHA-1 | — | 碰撞攻击 | $2^{63}$（已破） | — |
-| SHA-256 | — | 生日攻击 | 128 bits | Grover 降至 85 bits |
-
-2. 关键解释点：
-   - "等效安全" = 达到该安全级别相当于多少 bit 的对称密码（方便比较不同算法）。例如 RSA-2048 ≈ 112-bit 对称密钥。
-   - GNFS（一般数域筛）是亚指数时间——比多项式慢但比指数快。这就是为什么 RSA 需要 3072-bit 密钥（ECC 只需 256-bit）来达到 128-bit 安全等级。
-   - 量子威胁栏的规律：阿贝尔群上的密码（RSA/DH/DSA/ECC）全部被 Shor 多项式时间破解。对称密码（AES）和哈希函数（SHA-256）只受 Grover 平方根加速影响。
-
-3. 阿贝尔群的统一脆弱性：
-   - DHP/DLP/ECDLP 本质上都是"在阿贝尔群上找隐藏结构"
-   - Shor 算法通过量子傅里叶变换找出群的周期 → 多项式时间求解
-   - 这就引出了 §1.1.2 中转向非阿贝尔群密码的根本动机
-
-**GTIC 参考**：
-- p9-10：辫群密码分析（长度攻击、线性代数攻击）——补充非阿贝尔群侧的攻击情况
-- p10-11：Stickel 方案的 Shpilrain 攻击——展示设计失误的后果
-- p11-12：对数签名方案（MST 系列）密码分析
-
-**AOGTICA 参考**：p5-6 有安全属性的通用讨论，但深度有限。安全表格中的数据建议引用 HAC [6] 或 Stinson [7]。
-
-**这段写完后读者应该理解**：RSA/DH/ECC 在经典计算机上很安全，但在量子计算机上不堪一击。这就是为什么密码学界正在寻找替代方案（非阿贝尔群是其中之一）。
-
-**过渡到 2.3**："安全是相对的——在不同应用场景中，对安全的需求也不同。下面看各算法实际用在什么地方。"
+**过渡到 b)**：*"Performance and security are not abstract metrics—they translate directly into real-world suitability. Let us see where each algorithm is deployed."*
 
 ---
 
-## 2.3 应用场景（~200 words）
+## b) Applications（~200 words）
 
-**要传达的核心信息**：每个算法都有其典型应用场景——有些用于长期安全（如 TLS 证书），有些用于实时通信（如 DH 握手）。
+**要传达的核心信息**：每个算法有典型用途。RSA 正在被 ECC 取代，SHA-256 是当前最低安全标准。
 
 **讲解顺序**：
 
-1. 给出表格。
+1. **应用场景表**
 
-| 算法               | 典型应用                                             |
-| :--------------- | :----------------------------------------------- |
-| RSA              | TLS 证书、密钥传输、传统 PKI                               |
-| ECC (ECDH/ECDSA) | TLS 1.3、区块链钱包（Bitcoin secp256k1）、iOS/Android 安全区 |
-| DH               | TLS 握手密钥协商                                       |
-| DSA              | 美国政府数字签名标准                                       |
-| AES              | 文件加密、磁盘加密（BitLocker/FileVault）、TLS 对称会话          |
-| MD5              | 仅校验和（已禁用签名用途）                                    |
-| SHA-256          | Bitcoin PoW、TLS 证书签名、软件完整性验证                     |
+| 算法 | 典型应用 |
+|:---|:---|
+| RSA | TLS 证书、传统 PKI、密钥传输 |
+| ElGamal | PGP/GnuPG 加密（非默认）|
+| DSA | 美国政府数字签名标准（旧） |
+| ECC (ECDH/ECDSA) | TLS 1.3、Bitcoin（secp256k1）、iOS/Android 安全区 |
+| AES | 文件加密、磁盘加密（BitLocker/FileVault）、TLS 对称会话 |
+| MD5 | 仅校验和（已禁用签名用途） |
+| SHA-256 | Bitcoin PoW、TLS 证书签名、软件完整性验证 |
 
-2. 关键解释点：
-   - RSA 正在被 ECC 取代（TLS 1.3 默认使用 ECDHE + ECDSA）
-   - "数字签名"和"密钥协商"是两种不同的用途——有些算法只做其一（DH 只做密钥协商，DSA 只做签名），有些两者都做（RSA、ECC）
-   - MD5 已被弃用，SHA-1 正在被弃用，SHA-256 是目前最低安全标准
+2. **关键趋势**：
+   - RSA → ECC 迁移：TLS 1.3 默认 ECDHE + ECDSA
+   - MD5 已弃用 → SHA-1 弃用中 → SHA-256 最低安全标准
 
-3. **postquantum.com 参考**：
-   - 根据 docx 要求，在应用场景段引用 [postquantum.com](https://postquantum.com/post-quantum/shor-rsa-ecc-diffie-hellman/#ecc-the-invisible-backbone-of-modern-infrastructure)
-   - 该页面详细说明了 ECC 在 TLS/区块链中的应用——可作为一个延伸阅读入口
+3. **postquantum.com 引用**（docx 要求）：
+   引用 postquantum.com 上关于 ECC 在 TLS 和区块链中的应用说明
+   *"For a detailed overview of how ECC secures modern digital infrastructure, see [postquantum.com]..."*
 
-**这段写完后读者应该理解**：用户每天都在使用这些算法（打开手机、访问网页、发消息）——检测不到它们的存在，正是密码学成功的标志。
+**过渡到 c)**：*"However, the widespread deployment of these algorithms does not mean they are invulnerable. The next subsection examines how they can be—and have been—attacked."*
 
-**过渡到 §3**："理论分析留在纸上还不够。让我们通过实验验证这些安全性声明。"
+---
+
+## c) Cryptanalysis（~200 words）
+
+**要传达的核心信息**：阿贝尔群密码在量子计算机前统一脆弱。非阿贝尔群密码是应对方向之一，但尚未成熟。
+
+**讲解顺序**：
+
+1. **经典攻击**
+
+| 算法 | 最优攻击 | 复杂度 |
+|:---|:---|:---:|
+| RSA | GNFS 分解 | 亚指数 $L_n[1/3, 1.923]$ |
+| DLP (Zp) | GNFS-DLP | 亚指数 |
+| ECDLP | Pollard-$\rho$ | 指数 $O(\sqrt{q})$ |
+| AES | Biclique / 穷举 | $2^{126.1}$（AES-128）|
+| MD5 | 差分碰撞 | $2^{39}$（已破）|
+| SHA-1 | 差分碰撞 | $2^{63}$（已破）|
+| SHA-256 | 生日攻击 | $2^{128}$ |
+
+2. **量子威胁**
+
+| 量子攻击 | 影响对象 | 效果 |
+|:---|:---|:---|
+| Shor 算法 | RSA / DH / DSA / ECC | 多项式时间破解 |
+| Grover 算法 | AES / SHA | 平方根加速（AES-256 → 128-bit）|
+
+3. **核心论点**（连接 §1 a)2)）：
+   - Shor 利用了阿贝尔群的隐藏子群结构
+   - 非阿贝尔群密码（CSP/Ko-Lee/AAG/Stickel）的设计动机之一就是逃避 Shor
+   - 但非阿贝尔群密码尚未成熟——需要更多研究
+
+**GTIC 参考**：p9-10 辫群密码分析（长度攻击、线性代数攻击），p10-11 Stickel 和 MST 系列分析
+
+**理解检查**：阿贝尔群密码在量子时代集体失效。对称密码受影响小。非阿贝尔群密码是方向之一。
+
+**过渡到 §3**：*"So far, we have examined the mathematical principles and practical properties of these algorithms. But theory alone is not enough—let us put them to the test."*
 
 ---
 
@@ -133,9 +140,9 @@ date: 2026-07-15
 
 | 参考 | 用途 |
 |:---|:---|
-| [[密码算法群结构分析/03-研究报告/03-论文结构大纲]] | 总大纲，含引用索引 |
+| [[密码算法群结构分析/03-研究报告/03-论文结构大纲]] | 总大纲 |
 | [[密码算法群结构分析/03-研究报告/GTIC-注释翻译]] p9-11 | 密码分析详情 |
-| [[密码算法群结构分析/03-研究报告/AOGTICA-注释翻译]] p5-6 | 安全属性（参考框架即可） |
-| [[Section1-大纲]] §1.1.2 | 阿贝尔群统一脆弱性 → 非阿贝尔群动机 |
-| [[Section3-大纲]] | 实验验证理论 |
-| [[密码算法群结构分析/03-研究报告/证明与计算清单]] P27-P47 | 复杂度与安全分析条目索引 |
+| [[密码算法群结构分析/03-研究报告/AOGTICA-注释翻译]] p5-6 | 安全属性框架 |
+| [[密码算法群结构分析/03-研究报告/Section-1-Cryptographic-Algorithms]] §a)2) | 非阿贝尔群动机 |
+| [[密码算法群结构分析/03-研究报告/Section-3-Testing]] | 实验验证理论 |
+| [[密码算法群结构分析/03-研究报告/证明与计算清单]] | 复杂度与安全分析索引 |

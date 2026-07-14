@@ -5,288 +5,264 @@ date: 2026-07-15
 
 # Section 1: Cryptographic Algorithms — 写作指导
 
-> 目标：~2000 words。核心章节。先讲数学原理（群难题），再讲算法实现。
-> 所有群论概念在此当场定义——不引用外部预备章节。
+> 目标：~2000 words。核心章节。
+> 编号对应 docx：1) a) The Principles → b) Group-based Algorithms → c) More Algorithms → d) More Practices
 >
-> 核心参考文献：[[密码算法群结构分析/03-研究报告/GTIC-注释翻译]]（完整 DHP/DLP/CSP 定义）、[[密码算法群结构分析/03-研究报告/AOGTICA-注释翻译]]（各算法公式）
+> 核心参考文献：[[密码算法群结构分析/03-研究报告/GTIC-注释翻译]]、[[密码算法群结构分析/03-研究报告/AOGTICA-注释翻译]]
 
 ---
 
 ## 本节逻辑总图
 
 ```
-群的定义（当场给出）
-    ↓
-循环群 DHP ──→ DLP（阿贝尔群上的困难问题）
-    ↓
-非阿贝尔群 CSP ←── Shor 算法威胁（§1.1 原理）
-    ├── Ko-Lee
-    ├── AAG
-    └── Stickel
-    ↓
-算法实现（§1.2）
-    ├── 非对称：RSA / ElGamal / ECC / DSA
-    ├── 对称：AES / PGM / MD4+MD5 / SHA-1+SHA-256
-    └── 数字签名
+1) Section 1: Cryptographic Algorithms
+│
+├─ a) The Principles（群论困难问题）
+│   ├─ 1) Cyclic Groups → DHP → DLP
+│   └─ 2) Non-Abelian Groups → CSP → Ko-Lee / AAG / Stickel
+│
+├─ b) Group-based Algorithms（经典群基算法）
+│   ├─ 1) Asymmetric: RSA / ElGamal / DSA
+│   └─ 2) Symmetric: PGM（对数签名）
+│
+├─ c) More Algorithms（更多算法）
+│   ├─ 1) Encryption: AES（GF(2^8) 群结构）
+│   ├─ 2) Signature: ECC（椭圆曲线点群）
+│   └─ 3) Hash Functions: MD4→MD5 / SHA-1→SHA-256
+│
+└─ d) More Cryptographic Practices
+    ├─ 1) Padding
+    └─ 2) KDF
 ```
 
-**注意**：本节只讲"原理"和"公式"。复杂度分析留给 §2，实验留给 §3。
+---
+
+## 段落间的"缝合"方式
+
+每个子节结束时的过渡句模板（填入即可）：
+
+- 从 a) → b)：*"The above principles—DHP, DLP, and CSP on non-abelian groups—form the theoretical foundation. We now turn to concrete algorithms built upon these ideas."*
+- 从 b) → c)：*"Not all group-based algorithms fit neatly into the RSA–ElGamal–DSA mold. The following algorithms also rely on group structures, but in distinct ways."*
+- 从 c) → d)：*"Knowing which algorithm to use is only part of the story. In practice, cryptographic systems also rely on auxiliary techniques that ensure the algorithms are used correctly."*
 
 ---
 
-## 1.1 The Principles — 数学原理（~800 words）
+## a) The Principles（~700 words）
 
-### 1.1.1 阿贝尔群上的困难问题（~500 words）
+### a)1) Cyclic Groups — DHP（~200 words）
 
-#### 第一步：群的定义
-
-**要传达的概念**：什么是群。当场给出定义。
+**概念**：Diffie–Hellman 问题——给定 $g^a, g^b$ 求 $g^{ab}$。
 
 **讲解顺序**：
-1. 集合 $G$ + 二元运算 $\cdot$。
-2. 四条公理：封闭（$a \cdot b \in G$）、结合（$(a \cdot b) \cdot c = a \cdot (b \cdot c)$）、单位元（存在 $e$ 使得 $e \cdot a = a \cdot e = a$）、逆元（对每个 $a$ 存在 $b$ 使得 $a \cdot b = b \cdot a = e$）。
-3. 阿贝尔群 = 还满足交换律 $a \cdot b = b \cdot a$ 的群。
-4. 两个直观例子：
-   - $(\mathbb{Z}, +)$：无限阿贝尔群，单位元 0，逆元 $-a$
-   - $(\mathbb{Z}/n\mathbb{Z})^\times$：有限阿贝尔群，元素是与 $n$ 互质的模 $n$ 剩余类
+1. 用 DH 密钥交换协议引出问题：
+   - Alice 选 $a$，发 $g^a$；Bob 选 $b$，发 $g^b$
+   - 双方算 $g^{ab}$，窃听者不能
+2. 为什么正确？$(g^b)^a = g^{ab} = (g^a)^b$
+3. 为什么困难？"指数提取"是单向函数
+4. [Derive] 推导正确性
 
-**这段写完后读者应该理解**：群是研究"对称性"的代数结构，密码学关心的主要是有限群。
+**GTIC 参考**：p3 四步 DH 协议
 
-#### 第二步：循环群
+**理解检查**：DHP 是 DH 协议从数学上可行的原因
 
-**要传达的概念**：什么是生成元，什么是阶。
+**过渡到 DLP**：*"The difficulty of DHP depends on a more fundamental problem: given $g$ and $g^a$, can we find $a$?"*
 
-**讲解顺序**：
-1. 如果存在 $g \in G$ 使得 $G = \{g^k : k \in \mathbb{Z}\}$，则 $G$ 是循环群，$g$ 是生成元。
-2. 生成元的阶 $\operatorname{ord}(g)$ = 满足 $g^d = e$ 的最小正整数 $d$。
-3. 例子：$(\mathbb{Z}/p\mathbb{Z})^\times$ 是 $p-1$ 阶循环群（原根定理——陈述即可，不证明）。
+### a)1) Cyclic Groups — DLP（~150 words）
 
-**这段写完后读者应该理解**：循环群 = 一个元素能"生成"整个群的群——这是 DHP 和 DLP 的舞台。
-
-#### 第三步：DHP（Diffie–Hellman 问题）
-
-**要传达的概念**：DHP 的定义 + 为什么它重要 + 为什么它困难。
+**概念**：离散对数——给定 $g$ 和 $h = g^a$ 求 $a$。
 
 **讲解顺序**：
-1. 问题陈述：给定循环群 $\langle g \rangle$ 和群元素 $g^a, g^b$，计算 $g^{ab}$。
-2. 用 DH 密钥交换协议说明 DHP 为什么重要：
-   - Alice 选私钥 $a$，公开 $g^a$；Bob 选私钥 $b$，公开 $g^b$
-   - 双方都能算 $g^{ab} = (g^b)^a = (g^a)^b$（这是正确的关键）
-   - 窃听者只有 $g^a$ 和 $g^b$，算不出 $g^{ab}$（这是安全的关键）
-3. 为什么困难：指数乘法容易（知道 $a$ 就能算 $g^a$），但"指数提取"困难。
-   - 这就是"单向函数"的思想：正着算容易，反着算困难。
+1. 定义：实数对数易算，离散版本难
+2. DHP 与 DLP 的关系：DLP ⇒ DHP（如果会求 $a$ 就能算 $g^{ab}$）
+3. 哪些群上的 DLP 困难：$(\mathbb{Z}/p\mathbb{Z})^\times$（大 $p$）和 $E(\mathbb{F}_q)$
 
-**GTIC 参考**：p3 有完整的 DH 协议描述（Alice/Bob 四步）。可参考但需要用自己的话重述。
+**GTIC 参考**：p3-4，DLP 难度与群的表示方式有关
 
-**这段写完后读者应该理解**：DHP 是 DH 密钥交换从数学上可行的原因——以及它被假定为困难的。
+**理解检查**：DLP 是比 DHP 更强的基础问题。ElGamal 和 DSA 的安全建在此上。
 
-**过渡到 DLP**：DHP 的困难性来自于一个更基础的问题——离散对数问题。
+**过渡到 a)2)**：*"Both DHP and DLP are defined on abelian (commutative) groups. What if the group is non-abelian?"*
 
-#### 第四步：DLP（离散对数问题）
+### a)2) Non-Abelian Groups — CSP（~150 words）
 
-**要传达的概念**：DLP 定义 + DLP 与 DHP 的关系。
+**概念**：共轭搜索问题——给定 $x$ 和 $y = g^{-1}xg$ 求 $g$。
 
 **讲解顺序**：
-1. 问题陈述：给定 $g$ 和 $h = g^a$，求指数 $a$。
-   - 类比：实数中对数 $\log_g h$ 很容易（计算器按一下），但离散版本很难。
-2. DLP 与 DHP 的关系：
-   - DLP $\Rightarrow$ DHP：如果会解 DLP（能从 $g^a$ 算出 $a$），就能算 $g^{ab} = (g^b)^a$
-   - 反过来（DHP $\Rightarrow$ DLP）未证明，但密码学界普遍相信在循环群中等价
-3. 哪些群上的 DLP 被认为是困难的：
-   - $(\mathbb{Z}/p\mathbb{Z})^\times$ —— $p$ 足够大（如 2048-bit）
-   - $E(\mathbb{F}_q)$ —— 椭圆曲线上的点群
+1. 非阿贝尔群的定义回顾：不满足交换律
+2. CSP 是 DLP 在非阿贝尔群中的类比：
+   - DLP：$g^a$ 指数
+   - CSP：$g^{-1}xg$ 共轭
+   - 在阿贝尔群中 $g^{-1}xg = x$ → CSP 平凡
+3. 量子动机：Shor 算法破解阿贝尔群上的 DLP，但非阿贝尔群不直接受 Shor 威胁
 
-**GTIC 参考**：p3-4，注意 GTIC 强调"DLP 的难度依赖于群的表示方式，不只是群的同构类"——这是一个值得提及的微妙点。
+**GTIC 参考**：p4 "conjugation might be used instead of exponentiation"
 
-**这段写完后读者应该理解**：DLP 是比 DHP 更强（至少不弱于 DHP）的困难问题，是 ElGamal 和 DSA 的安全根基。
+**理解检查**：CSP 在非阿贝尔群中才有意义，是后量子密码的一个方向。
 
-**过渡到 §1.1.2**：DHP 和 DLP 都定义在阿贝尔群（交换群）上。如果群不可交换——即非阿贝尔群——会发生什么？这引出了另一个方向的困难问题。
+### a)2) Non-Abelian Groups — 三种协议（~200 words）
 
----
-
-### 1.1.2 非阿贝尔群上的困难问题（~300 words）
-
-#### 第一步：动机——为什么需要非阿贝尔群
-
-**要传达的概念**：Shor 量子算法可以在多项式时间内破解 DLP 和 DHP。
-
-**讲解顺序**：
-1. 指出阿贝尔群上的 DHP/DLP 有一个"阿喀琉斯之踵"：它们在量子计算机上不堪一击。
-2. Shor 算法通过量子傅里叶变换找出群的周期 → 多项式时间解 DLP。
-3. 因此密码学家探索非阿贝尔群——Shor 算法不直接适用。
-
-**重要**：这里只需要提动机，不深入量子算法细节（留给 Conclusion）。
-
-#### 第二步：CSP（共轭搜索问题）
-
-**要传达的概念**：CSP 是 DLP 在非阿贝尔群中的类比。
-
-**讲解顺序**：
-1. 问题陈述：给定非阿贝尔群 $G$ 中的元素 $x$ 和 $y = g^{-1}xg$，求共轭元素 $g$。
-2. 为什么这是 DLP 的类比：
-   - 在 DLP 中：$g^a$ （指数运算）
-   - 在 CSP 中：$g^{-1}xg$（共轭运算）
-   - 在阿贝尔群中 $g^{-1}xg = x$，所以 CSP 在阿贝尔群上是平凡的——它只有在非阿贝尔群中才非平凡
-3. 直观解释共轭：在辫群中，共轭 = "在辫子的一端加上一个扭转，然后从另一端解掉"。
-
-**GTIC 参考**：p4 "conjugation might be used instead of exponentiation in cryptographic contexts"——这句话直接点出了 CSP 的核心理念。
-
-#### 第三步：三种基于 CSP 的协议（简要介绍）
-
-**要传达的概念**：三种协议都是 DH 协议的非阿贝尔移植，各有特点。
+**概念**：Ko-Lee / AAG / Stickel——都是 DH 协议的非阿贝尔移植。
 
 **讲解顺序**：
 
 **Ko-Lee**（GTIC p5）：
-- 需要两个可交换子群 $A, B$（$ab = ba$ 对所有 $a \in A, b \in B$ 成立）
-- Alice 用 $a \in A$ 计算 $g^a = a^{-1}ga$，Bob 用 $b \in B$ 计算 $g^b = b^{-1}gb$
-- 关键：因为 $ab = ba$，双方得到相同的 $k = a^{-1}b^{-1}gba$
+- 需可交换子群 $A, B$（$ab = ba$ 对所有 $a \in A, b \in B$）
+- 共享密钥 $k = a^{-1}b^{-1}gba$
 - 平台群：辫群 $B_n$
 
-**AAG**（Anshel–Anshel–Goldfeld，GTIC p6）：
-- 更灵活——不需要预选可交换子群
-- 双方公布共轭对，最后计算换位子 $[x,y] = x^{-1}y^{-1}xy$ 作为共享密钥
-- 核心交换性质：$(a^y)^x = a^{yx}$，$(b^x)^y = b^{xy}$
+**AAG**（GTIC p6）：
+- 更灵活——无需预选子群
+- 计算换位子 $[x,y] = x^{-1}y^{-1}xy$ 作为密钥
 
 **Stickel**（GTIC p6-7）：
-- 使用矩阵群 $\mathrm{GL}(n, \mathbb{F}_q)$ 而非辫群
-- 共享密钥 = $a^{l+r} g b^{m+s}$（两侧乘，类似 DH 但底数不同）
-- 优势：构造简单；劣势：后来被 Shpilrain 的线性代数攻击破解
+- $\mathrm{GL}(n, \mathbb{F}_q)$ 矩阵群
+- $a^{l+r} g b^{m+s}$ 两侧乘
+- 简单但已被 Shpilrain 攻击破解
 
-**每种协议最多 3 句**。目标是对比"传统 DHP 在非阿贝尔群中的等价形式"，不是深入协议细节。
+**理解检查**：三种协议展示 DH 思想如何在非阿贝尔世界中变形。
 
-**这段写完后读者应该理解**：非阿贝尔群密码是对抗量子威胁的一个方向，但目前还没有成熟到能替代 RSA/ECC。
-
-**过渡到 §1.2**：以上讨论了密码学背后的数学原理（DHP/DLP/CSP）。现在把它应用到具体算法中——看这些原理如何落地为真实的加密方案。
+**过渡到 b)**：*"These principles—DHP, DLP, and CSP on non-abelian groups—form the theoretical foundation. We now turn to concrete algorithms built upon these ideas."*
 
 ---
 
-## 1.2 Group-based Algorithms（~1200 words）
+## b) Group-based Algorithms（~400 words）
 
-**总体说明**：每个算法一段。格式：公式 + 群结构 + 安全归约（哪个困难问题保障安全）。不在这里展开复杂度——留给 §2。
+### b)1) Asymmetric Key Cryptography（~300 words）
 
-### 1.2.1 非对称加密（~400 words，每个算法 ~100 words）
+**总体说明**：每个算法三段式——群结构 + 核心公式 + 安全归约。复杂度留给 §2。
 
-#### RSA
+#### RSA（~100 words）[Derive]
 
-**要传达的概念**：RSA 的安全基于大整数分解的困难性，其背后的群是 $(\mathbb{Z}/n\mathbb{Z})^\times$。
+1. 群结构：$(\mathbb{Z}/n\mathbb{Z})^\times$，$n = pq$
+2. 公式：$c = m^e \bmod n$，$m = c^d \bmod n$，$ed \equiv 1 \pmod{\varphi(n)}$
+3. [Derive] 推 $c^d \equiv m^{ed} \equiv m \pmod{n}$（Euler 定理）
+4. 安全归约：分解 $n$ → 破解 RSA，逆向未证明但广泛相信等价
 
-**讲解顺序**：
-1. 群结构：$(\mathbb{Z}/n\mathbb{Z})^\times$，其中 $n = pq$（$p, q$ 为大素数）
-2. 核心公式：
-   - 加密：$c = m^e \bmod n$
-   - 解密：$m = c^d \bmod n$
-   - 条件：$ed \equiv 1 \pmod{\varphi(n)}$，其中 $\varphi(n) = (p-1)(q-1)$
-3. [Derive] 推导解密正确性：$c^d \equiv m^{ed} \equiv m^{1 + k\varphi(n)} \equiv m \pmod{n}$（根据 Euler 定理——可陈述不证明）
-4. 安全归约：如果能分解 $n$，就能计算 $\varphi(n)$ 和 $d$ → RSA 不安全。逆向未证明但广泛相信等价。
+**AOGTICA 参考**：p2-3（但 AOGTICA 说 RSA 不用群论——不准确，$(\mathbb{Z}/n\mathbb{Z})^\times$ 就是乘法群）
 
-**AOGTICA 参考**：p2-3，注意 AOGTICA 说 RSA 不使用群论——这是不准确的。$(\mathbb{Z}/n\mathbb{Z})^\times$ 本身就是一个乘法群，RSA 的幂运算就是在这个群中进行的。
+#### ElGamal（~100 words）[Derive]
 
-#### ElGamal
-
-**要传达的概念**：ElGamal 基于 DLP，是 DH 协议到加密的直接推广。
-
-**讲解顺序**：
 1. 群结构：循环群 $\langle g \rangle \subset (\mathbb{Z}/p\mathbb{Z})^\times$
-2. 核心公式：
-   - 密钥生成：私钥 $x$，公钥 $y = g^x$
-   - 加密：选随机 $k$，$c_1 = g^k$, $c_2 = m \cdot y^k$
-   - 解密：$m = c_2 \cdot (c_1^x)^{-1}$
-3. 正确性：$c_2 \cdot (c_1^x)^{-1} = m \cdot g^{xk} \cdot (g^{kx})^{-1} = m$
-4. [Derive] 推导验证
-5. 特点：随机化加密——同一明文每次产生不同密文（因为 $k$ 随机）
+2. 公式：$y = g^x$，$c_1 = g^k$, $c_2 = m \cdot y^k$，$m = c_2 \cdot (c_1^x)^{-1}$
+3. [Derive] 推导正确性：$m \cdot g^{xk} \cdot (g^{kx})^{-1} = m$
+4. 特点：随机化加密（$k$ 随机 → 同一明文不同密文）
 
-**AOGTICA 参考**：p3 的三步描述（密钥生成/加密/解密）结构清晰，可以直接参考。
+**AOGTICA 参考**：p3 三步描述
 
-#### ECC
+#### DSA（~100 words）[Derive]
 
-**要传达的概念**：ECC 使用椭圆曲线上的点群，安全基于 ECDLP。
+1. 参数：素数 $p$，大素因子 $q \mid p-1$，$g$ 阶为 $q$
+2. 签名：$r = (g^k \bmod p) \bmod q$，$s = k^{-1}(H(m) + xr) \bmod q$
+3. 验证：$u_1 = H(m) \cdot s^{-1}$，$u_2 = r \cdot s^{-1}$，$v = (g^{u_1}y^{u_2} \bmod p) \bmod q$，检查 $v = r$
+4. [Derive] 推导验证正确性
+5. 与 ElGamal 结构类似，但用更小的子群（$q$ 通常 256-bit）
 
-**讲解顺序**：
-1. 曲线方程：$y^2 = x^3 + ax + b$（$\mathbb{F}_q$ 上，$4a^3 + 27b^2 \neq 0$）
-2. 群结构：$E(\mathbb{F}_q) = \{(x,y) : y^2 = x^3 + ax + b\} \cup \{\mathcal{O}\}$，$\mathcal{O}$ 是单位元（无穷远点）
-3. 群运算（弦切群律）：
-   - 点加 $P + Q$：过 $P, Q$ 的直线交曲线于第三点，镜像
-   - 倍点 $2P$：过 $P$ 的切线与曲线的交点，镜像
-   - [Sketch] 给出几何描述，完整代数推导引用 GTIC 或标准教材
-4. ECDLP：给定 $P$ 和 $Q = kP$，求 $k$
-5. 优势：相同安全等级下密钥远小于 RSA（256-bit ECC ≈ 3072-bit RSA）
+**AOGTICA 参考**：p5 流程描述
 
-**AOGTICA 参考**：p4，AOGTICA 给出了 ECC 的密钥生成/加密/解密三步结构，但椭圆曲线群结构的代数细节不够——建议补充。
+### b)2) Symmetric Cryptography — PGM（~100 words）[Cite]
 
-#### DSA
-
-**要传达的概念**：DSA 是基于 DLP 的数字签名标准，结构类似 ElGamal。
+**概念**：对数签名是 DLP 的推广，用于构造 PGM（置换群映射）对称密码。
 
 **讲解顺序**：
-1. 参数：素数 $p$，大素因子 $q \mid p-1$，生成元 $g$（阶为 $q$）
-2. 核心公式：
-   - 密钥生成：私钥 $x$，公钥 $y = g^x \bmod p$
-   - 签名：$r = (g^k \bmod p) \bmod q$, $s = k^{-1}(H(m) + xr) \bmod q$
-   - 验证：$u_1 = H(m) \cdot s^{-1} \bmod q$, $u_2 = r \cdot s^{-1} \bmod q$, $v = (g^{u_1}y^{u_2} \bmod p) \bmod q$，验证 $v = r$
-3. [Derive] 推导验证正确性
-4. 与 ElGamal 的关系：结构类似但 DSA 使用更小的子群（$q$ 通常 256-bit）
+1. 对数签名：对有限群 $G$ 选序列 $\alpha = [A_1, \ldots, A_s]$，每个元素唯一表示为每个 $A_i$ 中选一个的乘积
+2. PGM = 直接用对数签名构造的对称密码
+3. [Cite] 细节引用 Magliveras [53] 或 GTIC p7-8
 
-**AOGTICA 参考**：p5，有 DSA 密钥生成/签名/验证的流程描述。
+**GTIC 参考**：p7-8 对数签名正式定义
 
-**过渡到 §1.2.2**：以上都是公钥密码（非对称）。下面看对称密码中群论的角色。
+**过渡到 c)**：*"Not all group-based algorithms fit neatly into the RSA–ElGamal–DSA–PGM mold. The following algorithms also rely on group structures, but in distinct ways."*
 
 ---
 
-### 1.2.2 对称加密（~300 words）
+## c) More Algorithms（~500 words）
 
-#### AES
+### c)1) Encryption — AES（~150 words）[Derive]
 
-**要传达的概念**：AES 使用 $\mathrm{GF}(2^8)$ 上的加法群和乘法群。
+**概念**：AES 使用 $\mathrm{GF}(2^8)$ 上的加法群和乘法群。
 
 **讲解顺序**：
-1. 有限域 $\mathrm{GF}(2^8)$：字节 = 域元素，加法 = XOR，乘法 = 模不可约多项式的多项式乘。
+1. 有限域 $\mathrm{GF}(2^8)$：字节 = 域元素
 2. 两个群结构：
    - $(\mathrm{GF}(2^8), +)$：初等阿贝尔 $2$-群，阶 $256$
    - $(\mathrm{GF}(2^8)^\times, \cdot)$：循环群，阶 $255$
-3. [Derive] S-box 构造：两步——(a) 在 $\mathrm{GF}(2^8)$ 中求逆，$0 \mapsto 0$；(b) 在 $\mathbb{F}_2^8$ 上应用仿射变换 $A \cdot x + b$。
-4. 安全来源：混淆与扩散——不归约到群上的困难问题。
+3. [Derive] S-box：在 $\mathrm{GF}(2^8)$ 中求逆 → $\mathbb{F}_2^8$ 上仿射变换
+4. 安全来源：混淆 + 扩散，不归约到群困难问题
 
-**AOGTICA 参考**：p4，AOGTICA 对 AES 群论的分析较浅，建议结合 GTIC p8（AES 置换群结构）使用。
+**AOGTICA 参考**：p4（AES 群论分析较浅，建议结合 GTIC p8 置换群结构）
 
-#### PGM（置换群映射）
+### c)2) Signature — ECC（~150 words）[Sketch]
 
-**要传达的概念**：对数签名是 DLP 的推广，用于构造 PGM 对称密码。
-
-**讲解顺序**：
-1. 对数签名的直观概念（来自 GTIC p7-8）：
-   - 对有限群 $G$，选取一组序列 $\alpha = [A_1, \ldots, A_s]$
-   - 如果 $G$ 中每个元素都唯一地表示为每个 $A_i$ 中选一个的乘积 → 对数签名
-2. PGM 是对数签名直接构造的对称密码方案
-3. [Cite] 构造细节引用 Magliveras [53] 或 GTIC
-
-**GTIC 参考**：p7-8，有对数签名的正式定义和 DLP 关联。
-
-#### MD4 → MD5 和 SHA-1 → SHA-256
-
-**要传达的概念**：MD5 是 MD4 的增强版，SHA-1 是 MD5 的后继，SHA-256 是当前安全标准。它们不依赖群论困难问题。
+**概念**：ECC 使用椭圆曲线上的点群，安全基于 ECDLP。
 
 **讲解顺序**：
-1. Merkle–Damgård 迭代构造：输入分块 → 压缩函数迭代
-2. MD4（1990，Rivest）→ MD5（1991）：轮数更多、非线性函数更复杂、安全性更高——但今天都已破解
-3. SHA-1（1995）→ SHA-256（2002）：输出更长（160→256-bit）、轮数更多（80→64 轮但每轮更复杂）
-4. 群结构：运算载体 $(\mathbb{Z}/2^{32}\mathbb{Z}, +)$ 不构成安全假设——安全来自混淆与扩散，不来自困难问题
+1. 曲线方程 $y^2 = x^3 + ax + b$（$\mathbb{F}_q$ 上）
+2. 群结构 $E(\mathbb{F}_q) = \{(x,y) : y^2 = x^3 + ax + b\} \cup \{\mathcal{O}\}$
+3. 群运算（弦切群律）：
+   - 点加 $P+Q$ 和倍点 $2P$
+   - [Sketch] 几何描述即可，完整推导引用标准教材
+4. ECDLP：给定 $P$ 和 $Q = kP$ 求 $k$
+5. 优势：256-bit ECC ≈ 3072-bit RSA
 
-**过渡到 §1.2.3**：有些算法专用于签名而非加密。下面单独讨论数字签名。
+**注意**：ECC 在 docx 中放在 c)2) Signature 下，不是 b)1) Asymmetric！
+
+**AOGTICA 参考**：p4（密钥生成/加密/解密三步结构，但群结构代数细节不够）
+
+### c)3) Hash Functions — MD4→MD5 / SHA-1→SHA-256（~200 words）
+
+**概念**：哈希函数的迭代构造与其群论载体。
+
+**讲解顺序**：
+1. Merkle–Damgård：输入分块 → 压缩函数迭代
+2. MD4（1990）→ MD5（1991）：更多轮数、更复杂非线性函数
+3. SHA-1（1995）→ SHA-256（2002）：160→256-bit，结构更复杂
+4. 群结构：$(\mathbb{Z}/2^{32}\mathbb{Z}, +)$ — 运算的载体但不构成安全假设
+5. 安全来自混淆 + 扩散，不来自困难问题
+
+**理解检查**：哈希函数在群论中参与较浅——它们使用群运算作为基本构件，但安全性不归约到群上的困难问题。
+
+**过渡到 d)**：*"Knowing which algorithm to use is only part of the story. In practice, cryptographic systems also rely on auxiliary techniques that ensure the algorithms are used correctly."*
 
 ---
 
-### 1.2.3 数字签名（~100 words）
+## d) More Cryptographic Practices（~400 words）
 
-**要传达的概念**：数字签名不是独立算法，而是非对称算法的签名模式。
+### d)1) Padding（~200 words）
+
+**概念**：填充确保明文长度符合算法要求，同时防止某些攻击。
 
 **讲解顺序**：
-1. RSA 签名：$s = H(m)^d \bmod n$，验证 $H(m) \equiv s^e \pmod{n}$
-   - 和 RSA 加密的差别：加密用公钥 $e$、解密用私钥 $d$；签名用私钥 $d$、验证用公钥 $e$——"反过来用"
-2. DSA 签名：已经在 §1.2.1 描述核心公式——DSA 本身就是签名标准
-3. ECDSA：ECC 上的 DSA 变体——签名和验证过程与 DSA 类比
+1. **为什么需要填充**：
+   - RSA：教科书 RSA 是确定性加密 → 选择明文攻击可区分密文
+   - 消息长度必须小于 $n$（RSA）或对齐块大小（AES）
+2. **几种填充方案**：
+   - **PKCS#1 v1.5**：RSA 传统填充——但存在 Bleichenbacher 攻击（1998，填充预言攻击）
+   - **OAEP**（Optimal Asymmetric Encryption Padding）：RSA 的安全填充——Feige–Fiat–Shamir 范式，可证明安全（随机预言模型）
+   - **PKCS#7**：AES 等对称密码的块对齐填充
+3. [Cite] OAEP 可证明安全性引用 Bellare–Rogaway 1994
 
-**这段写完后读者应该理解**：签名模式 = "反向使用非对称加密" + 特定的签名算法（DSA）。
+**GTIC 参考**：p9-10 关于 Bleichenbacher 攻击的讨论
+
+### d)2) KDF（Key Derivation Functions）（~200 words）
+
+**概念**：KDF 从共享秘密导出会话密钥。
+
+**讲解顺序**：
+1. **为什么需要 KDF**：
+   - DH 协商出的 $g^{ab}$ 是一个群元素，不是适合直接用作对称密钥的均匀随机比特串
+   - 需要从"群元素"映射到"密钥"
+2. **典型构造**：
+   - **HKDF**（RFC 5869）：提取-扩展（extract-then-expand）两阶段
+     - 提取阶段：HMAC 将输入熵浓缩为固定长度伪随机密钥
+     - 扩展阶段：伪随机密钥通过迭代 HMAC 产生所需长度的输出
+   - 哈希函数在 KDF 中起核心作用——连接"群协议输出"和"对称密钥"
+3. [Cite] HKDF 细节引用 Krawczyk–Eronen 2010（RFC 5869）
+
+**理解检查**：Padding 和 KDF 不是加密算法本身，但它们是加密系统正确运作的必备组件——缺少它们，即使是 RSA 或 AES 也可能被攻破。
+
+---
+
+## 过渡到 §2
+
+*"This section has surveyed the group-theoretic foundations and concrete algorithms that form the backbone of modern cryptography. However, knowing the formulas is not enough. The next section examines the properties of these algorithms—their time complexity, security levels, and practical applications—to provide a basis for comparison."*
 
 ---
 
@@ -294,9 +270,9 @@ date: 2026-07-15
 
 | 参考 | 用途 |
 |:---|:---|
-| [[密码算法群结构分析/03-研究报告/03-论文结构大纲]] | 总大纲，含完整引用索引和字数指南 |
-| [[密码算法群结构分析/03-研究报告/GTIC-注释翻译]] | GTIC 注释：DHP p2-3，DLP p3-4，CSP p4，Ko-Lee p5，AAG p6，Stickel p6-7，PGM p7-8 |
-| [[密码算法群结构分析/03-研究报告/AOGTICA-注释翻译]] | AOGTICA 注释：RSA p2-3，ElGamal p3，ECC p4，AES p4，DSA p5 |
-| [[密码算法群结构分析/03-研究报告/证明与计算清单]] | 完整 47 项证明条目索引 |
-| [[密码算法群结构分析/03-研究报告/证明方法细则]] | 每条的具体证明方法 |
-| [[Section2-大纲]] | 复杂度/安全分析（本节不展开） |
+| [[密码算法群结构分析/03-研究报告/03-论文结构大纲]] | 总大纲 |
+| [[密码算法群结构分析/03-研究报告/GTIC-注释翻译]] | DHP p3 / DLP p3-4 / CSP p4 / Ko-Lee p5 / AAG p6 / Stickel p6-7 / PGM p7-8 / Bleichenbacher p9-10 |
+| [[密码算法群结构分析/03-研究报告/AOGTICA-注释翻译]] | RSA p2-3 / ElGamal p3 / DSA p5 / AES p4 / ECC p4 |
+| [[密码算法群结构分析/03-研究报告/Section-2-Properties-and-Applications]] | 复杂度与安全分析（本节不展开） |
+| [[密码算法群结构分析/03-研究报告/证明与计算清单]] | 证明条目索引 |
+| [[密码算法群结构分析/03-研究报告/证明方法细则]] | Derive/Sketch 实现细节 |
