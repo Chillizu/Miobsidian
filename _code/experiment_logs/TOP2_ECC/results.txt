@@ -1,0 +1,49 @@
+[1] NIST curves via openssl speed...
+  ecdhp256...
+  ecdhp384...
+  ecdhp521...
+  ecdsap256...
+  ecdsap384...
+  ecdsap521...
+
+--- Parsed ECDH results ---
+[2] secp256k1 keygen...
+  Trial 1: 3631.52263300000000000000us/op, 275.36658891036574189512 ops/s
+  Trial 2: 3595.61120600000000000000us/op, 278.11683263510220576390 ops/s
+  Trial 3: 3535.24188500000000000000us/op, 282.86607607897811495860 ops/s
+[3] Curve25519 keygen (via cryptography)...
+  Curve25519: 32.0us/op, 31259 ops/s
+[4] BN254 scalar mult (via py_ecc)...
+  py_ecc not installed: pip install py_ecc
+  BN254 skipped
+[5] Key size comparison...
+
+--- Key Size Comparison ---
+Curve           Pub key bytes   Security bits  
+P-256           65              128            
+P-384           97              192            
+P-521           133             256            
+secp256k1       65              128            
+X25519          32              128            
+BN254           64              128            
+[6] Generating charts...
+
+========================================
+ ALL RESULTS
+========================================
+ecc,x25519,kgen,ops_per_s,31258.553744568904
+ecc,x25519,kgen,mean_us,31.99124336242676
+ecc,P-256,pubkey_bytes,,65
+ecc,P-256,security_bits,,128
+ecc,P-384,pubkey_bytes,,97
+ecc,P-384,security_bits,,192
+ecc,P-521,pubkey_bytes,,133
+ecc,P-521,security_bits,,256
+ecc,secp256k1,pubkey_bytes,,65
+ecc,secp256k1,security_bits,,128
+ecc,X25519,pubkey_bytes,,32
+ecc,X25519,security_bits,,128
+ecc,BN254,pubkey_bytes,,64
+ecc,BN254,security_bits,,128
+
+[TOP2] Complete in /home/chillizu/Projects/Mioom/essay/experiments/TOP2_ECC_20260714_080806

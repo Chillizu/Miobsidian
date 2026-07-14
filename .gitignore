@@ -1,0 +1,13 @@
+# Obsidian workspace state (changes every open)
+.obsidian/workspace.json
+.obsidian/workspace
+.obsidian/cache/
+.obsidian/plugins/
+.obsidian/themes/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
