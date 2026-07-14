@@ -80,6 +80,17 @@ Main Body
 
 	a)  Hash Collision in Weak MD4 and SHA-1
 
+		Demonstration of how weak hash functions can be practically collided.
+		MD4 collision via Wang et al. (2005) differential attack at ~2^39 complexity.
+		SHA-1 collision via SHAttered (2017, Google + CWI) at ~2^63 complexity (~110 GPU-years).
+		Shows why hash functions need sufficient rounds, state size, and nonlinear mixing.
+		(Section 3 §a) in paper. Hash background: GTIC p8. Collision results: Wang et al. 2005, SHAttered 2017.)
+
 	b)  Use Inappropriate Parameters to Test Asymmetric Ciphers
+
+		Small-prime DLP: DLP on a 32-bit prime group solved in seconds via baby-step giant-step or Pohlig–Hellman.
+		Weak ECC curve (anomalous curve): ECDLP broken in O(log p) via Smart's p-adic lift attack.
+		Demonstrates that mathematical security depends on correct parameter selection — not just algorithm choice.
+		(Section 3 §b) in paper. GTIC p9-10 for cryptanalysis background.)
 
 Conclusion: Summarise the contents covered so far and provide a glimpse of future cryptography. (~150 words)
