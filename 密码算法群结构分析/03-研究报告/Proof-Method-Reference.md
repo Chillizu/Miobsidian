@@ -1,4 +1,5 @@
 ---
+
 title: "Proof Method Reference — Item-by-Item Guide"
 date: 2026-07-14
 ---
