@@ -1,4 +1,4 @@
-Main Body
+Introduction to Group-Based and Non-Group-Based Cryptography
 
 1)  Section 1: Cryptographic Algorithms (~2000 words)
 
